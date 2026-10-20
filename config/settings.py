@@ -93,8 +93,23 @@ class RiskConfig:
     daily_trade_limit: int = 50
     pause_after_loss_streak: int = 300
     max_position_size_pct: float = 0.1
+    max_position_per_symbol_pct: float = 0.05
+    max_portfolio_heat_pct: float = 0.20
     reduce_size_on_loss: bool = True
     size_reduction_factor: float = 0.5
+    # Volatility-adjusted position sizing
+    vol_adjust_sizing: bool = True
+    atr_multiplier_sizing: float = 2.0
+    # Circuit breakers
+    circuit_breaker_enabled: bool = True
+    circuit_breaker_drawdown_pct: float = 0.02
+    circuit_breaker_time_window_min: int = 15
+    circuit_breaker_error_streak: int = 5
+    # Trailing stop & breakeven
+    trailing_stop_enabled: bool = True
+    trailing_stop_activation_pct: float = 0.015
+    trailing_stop_pct: float = 0.01
+    breakeven_activation_pct: float = 0.01
 
 
 @dataclass

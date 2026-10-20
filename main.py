@@ -11,6 +11,7 @@ import time
 import logging
 import sys
 from datetime import datetime
+import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
@@ -89,7 +90,8 @@ class UnifiedCryptoBot:
                         return
 
             # 5. Risk Governor Verification
-            can_trade, reason = self.risk_manager.can_trade()
+            now = datetime.now()
+            can_trade, reason = self.risk_manager.can_trade(now)
             if not can_trade:
                 logger.info(f"[{symbol}] {setup.signal.value} rejected by RiskManager: {reason}")
                 return
@@ -98,21 +100,30 @@ class UnifiedCryptoBot:
             if self.exchange.get_position(symbol):
                 return
 
-            # 7. Position Sizing
+            # 7. Portfolio Heat Check
+            notional_value = setup.entry_price * size
+            heat_ok, heat_reason = self.risk_manager.check_portfolio_heat(symbol, notional_value)
+            if not heat_ok:
+                logger.info(f"[{symbol}] {setup.signal.value} rejected by Portfolio Heat: {heat_reason}")
+                return
+
+            # 8. Position Sizing
+            atr = df.get('atr', pd.Series([0])).iloc[-1] if 'atr' in df.columns else None
             size = self.risk_manager.calculate_position_size(
-                self.risk_manager.current_balance, setup.entry_price, setup.stop_loss
+                self.risk_manager.current_balance, setup.entry_price, setup.stop_loss, atr
             )
             if size <= 0:
                 return
 
+            notional_value = setup.entry_price * size
             side = 'buy' if setup.signal == Signal.LONG else 'sell'
             logger.info(
                 f"[{symbol}] [EXECUTE {setup.signal.value}] Strategy: {setup.strategy_name} | "
                 f"Entry: ${setup.entry_price:.4f} | SL: ${setup.stop_loss:.4f} | "
-                f"TP: ${setup.take_profit:.4f} | Size: {size:.6f} | Conf: {setup.confidence:.2f}"
+                f"TP: ${setup.take_profit:.4f} | Size: {size:.6f} | Notional: ${notional_value:.2f} | Conf: {setup.confidence:.2f}"
             )
 
-            # 8. Order Placement
+            # 9. Order Placement
             if self.config.mode == "live":
                 self.exchange.set_leverage(symbol, self.config.scalping.leverage)
                 self.exchange.create_market_order(symbol, side, size)
@@ -120,6 +131,10 @@ class UnifiedCryptoBot:
                 self.exchange.create_stop_loss(symbol, opp_side, size, setup.stop_loss)
             else:
                 self.exchange.create_market_order(symbol, side, size, {'price': setup.entry_price})
+
+            # 10. Register position for heat & trailing stop tracking
+            self.risk_manager.register_position(symbol, notional_value, side)
+            self.risk_manager.update_position_price(symbol, setup.entry_price)
 
         except Exception as e:
             logger.error(f"Error processing {symbol}: {e}")
@@ -138,6 +153,23 @@ class UnifiedCryptoBot:
             entry = float(pos.get('entryPrice', 0.0))
             side = pos.get('side', 'long')
             sc = self.config.scalping
+
+            # Update trailing stop watermark
+            self.risk_manager.update_position_price(symbol, price)
+
+            # Check trailing stop / breakeven
+            trail_hit, trail_reason = self.risk_manager.check_trailing_stop(symbol, price)
+            if trail_hit:
+                reason = f"TRAILING STOP: {trail_reason}"
+                logger.info(f"[{symbol}] Closed {side.upper()} position: {reason} | PnL: ${pnl:.4f}")
+                if self.config.mode == "live":
+                    opp_side = 'sell' if side == 'long' else 'buy'
+                    self.exchange.create_market_order(symbol, opp_side, float(pos.get('contracts', 0.0)))
+                else:
+                    self.exchange.close_position(symbol, price)
+                self.risk_manager.record_trade(pnl, symbol)
+                self.risk_manager.release_position(symbol)
+                return
 
             hit_tp = False
             hit_sl = False
@@ -160,6 +192,7 @@ class UnifiedCryptoBot:
                 else:
                     self.exchange.close_position(symbol, price)
                 self.risk_manager.record_trade(pnl, symbol)
+                self.risk_manager.release_position(symbol)
 
         except Exception as e:
             logger.error(f"Error checking exits for {symbol}: {e}")
