@@ -113,11 +113,36 @@ class RiskConfig:
 
 
 @dataclass
+class ExecutionConfig:
+    # Order retry
+    max_order_retries: int = 3
+    retry_backoff_base_ms: int = 500
+    retry_backoff_max_ms: int = 5000
+    # Slippage
+    slippage_model_enabled: bool = True
+    max_slippage_pct: float = 0.003          # reject if estimated slippage > 0.3%
+    slippage_depth_levels: int = 10
+    # Order flags
+    post_only: bool = False                  # maker-only limit orders
+    reduce_only_stops: bool = True           # stop-losses must be reduce-only
+    # TWAP execution
+    twap_enabled: bool = False
+    twap_slices: int = 5
+    twap_interval_sec: int = 30
+    # Paper realism
+    paper_latency_ms: int = 50
+    paper_slippage_pct: float = 0.001        # 0.1% simulated slippage
+    paper_partial_fill_chance: float = 0.1   # 10% chance of partial fill
+    paper_reject_chance: float = 0.02        # 2% chance of order rejection
+
+
+@dataclass
 class BotConfig:
     exchange: ExchangeConfig = field(default_factory=ExchangeConfig)
     scalping: ScalpingConfig = field(default_factory=ScalpingConfig)
     strategy: StrategyConfig = field(default_factory=StrategyConfig)
     risk: RiskConfig = field(default_factory=RiskConfig)
+    execution: ExecutionConfig = field(default_factory=ExecutionConfig)
     log_level: str = "INFO"
     log_file: str = "logs/bot.log"
     mode: str = "paper"

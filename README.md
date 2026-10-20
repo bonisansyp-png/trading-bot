@@ -29,6 +29,35 @@
    - **Circuit Breakers**: Automatic trading halt on flash-crash drawdown (2% in 15 min default) or consecutive exchange error streaks (5 default).
    - **Trailing Stop & Breakeven**: Auto-arm breakeven stop at 1.5% profit, then trail at 1% below high-water mark (long) / above (short).
 
+5. **Execution Quality**:
+   - **Order State Machine**: Tracks pending → open → partial → filled → rejected/cancelled for every order.
+   - **Retry with Exponential Backoff**: Auto-retries transient network/timeout errors (3 attempts, 500ms–5s backoff).
+   - **Slippage Estimation**: Rejects market orders if estimated slippage from orderbook depth exceeds 0.3% default.
+   - **Post-Only / Reduce-Only**: Configurable maker-only limit orders and reduce-only stop-losses to protect fees and position integrity.
+   - **Paper Trading Realism**: Simulated latency (50ms), slippage (0.1%), partial fills (10% chance), and order rejects (2% chance).
+
+---
+
+## Execution Configuration (`config/settings.py`)
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `execution.max_order_retries` | 3 | Max retry attempts for transient errors |
+| `execution.retry_backoff_base_ms` | 500 | Base backoff delay in milliseconds |
+| `execution.retry_backoff_max_ms` | 5000 | Maximum backoff delay in milliseconds |
+| `execution.slippage_model_enabled` | true | Enable orderbook-based slippage estimation |
+| `execution.max_slippage_pct` | 0.003 | Reject orders if estimated slippage > 0.3% |
+| `execution.slippage_depth_levels` | 10 | Orderbook depth levels for slippage calc |
+| `execution.post_only` | false | Maker-only limit orders (no taker fees) |
+| `execution.reduce_only_stops` | true | Stop-losses must be reduce-only |
+| `execution.twap_enabled` | false | Enable TWAP order slicing |
+| `execution.twap_slices` | 5 | Number of TWAP slices |
+| `execution.twap_interval_sec` | 30 | Seconds between TWAP slices |
+| `execution.paper_latency_ms` | 50 | Simulated network latency in paper mode |
+| `execution.paper_slippage_pct` | 0.001 | Simulated slippage in paper mode (0.1%) |
+| `execution.paper_partial_fill_chance` | 0.1 | Chance of partial fill in paper mode |
+| `execution.paper_reject_chance` | 0.02 | Chance of order rejection in paper mode |
+
 ---
 
 ## Risk Configuration (`config/settings.py`)

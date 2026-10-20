@@ -100,14 +100,7 @@ class UnifiedCryptoBot:
             if self.exchange.get_position(symbol):
                 return
 
-            # 7. Portfolio Heat Check
-            notional_value = setup.entry_price * size
-            heat_ok, heat_reason = self.risk_manager.check_portfolio_heat(symbol, notional_value)
-            if not heat_ok:
-                logger.info(f"[{symbol}] {setup.signal.value} rejected by Portfolio Heat: {heat_reason}")
-                return
-
-            # 8. Position Sizing
+            # 7. Position Sizing
             atr = df.get('atr', pd.Series([0])).iloc[-1] if 'atr' in df.columns else None
             size = self.risk_manager.calculate_position_size(
                 self.risk_manager.current_balance, setup.entry_price, setup.stop_loss, atr
@@ -115,7 +108,13 @@ class UnifiedCryptoBot:
             if size <= 0:
                 return
 
+            # 8. Portfolio Heat Check
             notional_value = setup.entry_price * size
+            heat_ok, heat_reason = self.risk_manager.check_portfolio_heat(symbol, notional_value)
+            if not heat_ok:
+                logger.info(f"[{symbol}] {setup.signal.value} rejected by Portfolio Heat: {heat_reason}")
+                return
+
             side = 'buy' if setup.signal == Signal.LONG else 'sell'
             logger.info(
                 f"[{symbol}] [EXECUTE {setup.signal.value}] Strategy: {setup.strategy_name} | "
@@ -123,14 +122,22 @@ class UnifiedCryptoBot:
                 f"TP: ${setup.take_profit:.4f} | Size: {size:.6f} | Notional: ${notional_value:.2f} | Conf: {setup.confidence:.2f}"
             )
 
-            # 9. Order Placement
+            # 9. Order Placement with retry & slippage checks
             if self.config.mode == "live":
                 self.exchange.set_leverage(symbol, self.config.scalping.leverage)
-                self.exchange.create_market_order(symbol, side, size)
+                entry_order = self.exchange.create_market_order(symbol, side, size)
+                if entry_order and entry_order.state != 'filled':
+                    logger.error(f"[{symbol}] Entry order not filled: state={entry_order.state}, error={entry_order.last_error}")
+                    return
                 opp_side = 'sell' if side == 'buy' else 'buy'
-                self.exchange.create_stop_loss(symbol, opp_side, size, setup.stop_loss)
+                sl_order = self.exchange.create_stop_loss(symbol, opp_side, size, setup.stop_loss)
+                if sl_order and sl_order.state == 'rejected':
+                    logger.error(f"[{symbol}] Stop-loss order rejected: {sl_order.last_error}")
             else:
-                self.exchange.create_market_order(symbol, side, size, {'price': setup.entry_price})
+                entry_order = self.exchange.create_market_order(symbol, side, size, {'price': setup.entry_price})
+                if isinstance(entry_order, dict) and entry_order.get('status') == 'rejected':
+                    logger.error(f"[{symbol}] Entry order rejected: {entry_order.get('reject_reason')}")
+                    return
 
             # 10. Register position for heat & trailing stop tracking
             self.risk_manager.register_position(symbol, notional_value, side)
