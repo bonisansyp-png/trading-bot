@@ -17,12 +17,12 @@ logger = logging.getLogger(__name__)
 class CircuitBreaker:
     """Tracks rapid drawdown and error streaks to halt trading automatically."""
 
-    def __init__(self, config):
-        self.enabled = config.circuit_breaker_enabled
-        self.drawdown_pct = config.circuit_breaker_drawdown_pct
-        self.time_window_min = config.circuit_breaker_time_window_min
-        self.error_streak_limit = config.circuit_breaker_error_streak
-        self.peak_balance = config.scalping.initial_capital
+    def __init__(self, risk_config, initial_capital: float):
+        self.enabled = risk_config.circuit_breaker_enabled
+        self.drawdown_pct = risk_config.circuit_breaker_drawdown_pct
+        self.time_window_min = risk_config.circuit_breaker_time_window_min
+        self.error_streak_limit = risk_config.circuit_breaker_error_streak
+        self.peak_balance = initial_capital
         self.window_start: Optional[datetime] = None
         self.window_low: Optional[float] = None
         self.error_count = 0
@@ -83,7 +83,7 @@ class RiskManager:
         self.symbol_exposure: Dict[str, float] = {}
         self.open_positions: Dict[str, Dict] = {}
         # Circuit breaker
-        self.circuit_breaker = CircuitBreaker(config)
+        self.circuit_breaker = CircuitBreaker(config.risk, config.scalping.initial_capital)
 
     def can_trade(self, now: Optional[datetime] = None) -> Tuple[bool, str]:
         now = now or datetime.now()
