@@ -9,6 +9,7 @@ Integrates:
 """
 import time
 import logging
+import os
 import sys
 from datetime import datetime
 import pandas as pd
@@ -23,6 +24,7 @@ from core.risk_manager import RiskManager
 from core.gru_predictor import GRUPredictor
 
 console = Console()
+os.makedirs('logs', exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(message)s',
