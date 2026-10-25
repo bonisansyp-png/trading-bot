@@ -94,7 +94,7 @@ class RiskConfig:
     daily_trade_limit: int = 50
     pause_after_loss_streak: int = 300
     max_position_size_pct: float = 0.1
-    max_position_per_symbol_pct: float = 0.05
+    max_position_per_symbol_pct: float = 0.15
     max_portfolio_heat_pct: float = 0.20
     reduce_size_on_loss: bool = True
     size_reduction_factor: float = 0.5
