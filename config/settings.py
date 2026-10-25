@@ -87,6 +87,7 @@ class StrategyConfig:
 
 @dataclass
 class RiskConfig:
+    risk_per_trade: float = 0.01
     max_daily_loss_pct: float = 0.03
     max_drawdown_pct: float = 0.05
     max_consecutive_losses: int = 5
