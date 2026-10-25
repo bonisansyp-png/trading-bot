@@ -22,7 +22,7 @@ class ExchangeConfig:
 @dataclass
 class ScalpingConfig:
     symbols: List[str] = field(default_factory=lambda: ["BTC/USDT", "ETH/USDT", "SOL/USDT"])
-    timeframe: str = "1m"
+    timeframe: str = "5m"
     higher_timeframe: str = "15m"
     initial_capital: float = 1000.0
     risk_per_trade: float = 0.01          # 1% risk per trade
