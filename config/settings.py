@@ -95,7 +95,7 @@ class RiskConfig:
     pause_after_loss_streak: int = 300
     max_position_size_pct: float = 0.1
     max_position_per_symbol_pct: float = 0.15
-    max_portfolio_heat_pct: float = 0.20
+    max_portfolio_heat_pct: float = 0.60
     reduce_size_on_loss: bool = True
     size_reduction_factor: float = 0.5
     # Volatility-adjusted position sizing
