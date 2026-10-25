@@ -291,7 +291,7 @@ class PaperExchange:
         self.base_slippage_pct = self.exec_cfg.paper_slippage_pct
         self.partial_fill_chance = self.exec_cfg.paper_partial_fill_chance
         self.reject_chance = self.exec_cfg.paper_reject_chance
-        self._public = ccxt.binance()
+        self._public = ccxt.bybit()
 
     def fetch_ohlcv(self, symbol: str, timeframe: str = '1m', limit: int = 200) -> pd.DataFrame:
         ohlcv = self._public.fetch_ohlcv(symbol, timeframe, limit=limit)
